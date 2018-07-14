@@ -2,7 +2,6 @@ package lshensemble
 
 import (
 	"math"
-	"sync"
 )
 
 // LshForestArray represents a MinHash LSH implemented using an array of LshForest.
@@ -13,7 +12,7 @@ type LshForestArray struct {
 	array   []*LshForest
 }
 
-// Initialize with parameters:
+// NewLshForestArray initializes with parameters:
 // maxK is the maximum value for the MinHash parameter K - the number of hash functions per "band".
 // numHash is the number of hash functions in MinHash.
 func NewLshForestArray(maxK, numHash int) *LshForestArray {
@@ -30,33 +29,21 @@ func NewLshForestArray(maxK, numHash int) *LshForestArray {
 
 // Add a key with MinHash signature into the index.
 // The key won't be searchable until Index() is called.
-func (a *LshForestArray) Add(key string, sig Signature) {
-	var wg sync.WaitGroup
-	wg.Add(len(a.array))
+func (a *LshForestArray) Add(key interface{}, sig []uint64) {
 	for i := range a.array {
-		go func(lsh *LshForest) {
-			lsh.Add(key, sig)
-			wg.Done()
-		}(a.array[i])
+		a.array[i].Add(key, sig)
 	}
-	wg.Wait()
 }
 
-// Makes all the keys added searchable.
+// Index makes all the keys added searchable.
 func (a *LshForestArray) Index() {
-	var wg sync.WaitGroup
-	wg.Add(len(a.array))
 	for i := range a.array {
-		go func(lsh *LshForest) {
-			lsh.Index()
-			wg.Done()
-		}(a.array[i])
+		a.array[i].Index()
 	}
-	wg.Wait()
 }
 
-// Return candidate keys given the query signature and parameters.
-func (a *LshForestArray) Query(sig Signature, K, L int, out chan<- string, done <-chan struct{}) {
+// Query returns candidate keys given the query signature and parameters.
+func (a *LshForestArray) Query(sig []uint64, K, L int, out chan<- interface{}, done <-chan struct{}) {
 	a.array[K-1].Query(sig, -1, L, out, done)
 }
 
